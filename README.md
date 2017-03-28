@@ -2,6 +2,7 @@
 
 
 Gonçalo - g.feliciano@campus.fct.unl.pt
+Ricardo - rad.ribeiro@campus.fct.unl.pt
 
 
 
