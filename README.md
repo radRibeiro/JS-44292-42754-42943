@@ -3,7 +3,7 @@
 
 Gonçalo - g.feliciano@campus.fct.unl.pt
 
-Ricardo - rad.ribeiro@campus.fct.unl.pt
+Ricardo Ribeiro <42754> - rad.ribeiro@campus.fct.unl.pt
 
 
 
