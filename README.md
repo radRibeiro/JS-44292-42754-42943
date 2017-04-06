@@ -1,5 +1,6 @@
 # Jogos e Simulação #
 
+Duarte Moreira <42943>      - ds.moreira@campus.fct.unl.pt
 
 Gonçalo Feliciano <44292>   - g.feliciano@campus.fct.unl.pt
 
