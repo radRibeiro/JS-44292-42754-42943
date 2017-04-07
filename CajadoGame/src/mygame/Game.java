@@ -173,6 +173,7 @@ public class Game extends SimpleApplication
     else{
             channel.setSpeed(0f);
             channel.setAnim("Idle1");
+            channel.setSpeed(0.5f);
             channel.setLoopMode(LoopMode.Loop);
         }
   }
