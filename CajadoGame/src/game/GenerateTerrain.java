@@ -20,8 +20,6 @@ public class GenerateTerrain {
   }
   
   public TerrainQuad setupTerrain(){
-    
-     
       /** 1. Create terrain material and load four textures into it. */
       if(assetManager == null){
           System.out.println("aaaaa");
