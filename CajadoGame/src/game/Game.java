@@ -58,6 +58,8 @@ public class Game extends SimpleApplication
   private Vector3f camDir = new Vector3f();
   private Vector3f camLeft = new Vector3f();
   private Vector3f walkDirection = new Vector3f();
+  private Vector3f modelFowardDir;
+  private Vector3f modelLeftDir;
   
   private AnimChannel animChannel;
   private AnimControl control;
@@ -75,9 +77,9 @@ public class Game extends SimpleApplication
   }
 
   public void simpleInitApp() {
-    /** Set up Physics */
     bulletAppState = new BulletAppState();
     stateManager.attach(bulletAppState);
+    bulletAppState.setDebugEnabled(true);
 
     viewPort.setBackgroundColor(new ColorRGBA(0.7f, 0.8f, 1f, 1f));
     flyCam.setEnabled(false);
@@ -108,6 +110,7 @@ public class Game extends SimpleApplication
     playerControl.setGravity(30);
     playerControl.setPhysicsLocation(new Vector3f(0, 10, 0));
     
+    
     player.addControl(player_phy);
     player.addControl(playerControl);
     bulletAppState.getPhysicsSpace().add(player_phy);
@@ -130,7 +133,6 @@ public class Game extends SimpleApplication
     control = player.getControl(AnimControl.class);
     control.addListener(this);
     
-    
     for (String anim : control.getAnimationNames()) {
         System.out.println(anim);
     }
@@ -144,9 +146,7 @@ public class Game extends SimpleApplication
     targetNode.attachChild(sceneModel);
     rootNode.attachChild(targetNode);
     bulletAppState.getPhysicsSpace().add(landscape);
-    bulletAppState.getPhysicsSpace().add(player);
-    
-    
+    bulletAppState.getPhysicsSpace().add(player); 
   }
 
   private void setUpLight() {
@@ -210,32 +210,29 @@ public class Game extends SimpleApplication
 
   @Override
     public void simpleUpdate(float tpf) {
-        camDir.set(cam.getDirection()).multLocal(0.6f);
-        camLeft.set(cam.getLeft()).multLocal(0.4f);
-        walkDirection.set(0, 0, 0);
-        Vector3f playerDir = playerControl.getViewDirection();
-        
-        Quaternion rot = new Quaternion().fromAngleAxis(180*FastMath.DEG_TO_RAD, new Vector3f(1,0,0));
-        //Vector3f rotVector = rot
-        
+        modelFowardDir = cam.getRotation().mult(Vector3f.UNIT_Z).multLocal(1,0,1);
+        modelLeftDir = cam.getRotation().mult(Vector3f.UNIT_X);
+        walkDirection = new Vector3f(0,0,0);
+       
         if (left) {
-            walkDirection.addLocal(camLeft);
-            playerControl.getViewDirection().set(camLeft.negate());
+            walkDirection.addLocal(modelLeftDir);
+            playerControl.getViewDirection().set(modelLeftDir.negate());
         }
         if (right) {
-            walkDirection.addLocal(camLeft.negate());
-            playerControl.getViewDirection().set(camLeft);
+            walkDirection.addLocal(modelLeftDir.negate());
+            playerControl.getViewDirection().set(modelLeftDir);
         }
         if (up) {
-            walkDirection.addLocal(camDir);
-            playerControl.getViewDirection().set(camDir);
+            walkDirection.addLocal(modelFowardDir);
+            playerControl.getViewDirection().set(modelFowardDir.negate());
         }
         if (down) {
-            walkDirection.addLocal(camDir.negate());
-            //playerControl.getViewDirection().set(playerDir.mult());
+            walkDirection.addLocal(modelFowardDir.negate());
+            playerControl.getViewDirection().set(modelFowardDir);
         }
         playerControl.setWalkDirection(walkDirection);
         cam.setLocation(playerControl.getPhysicsLocation());
+        
     }
 
     @Override
