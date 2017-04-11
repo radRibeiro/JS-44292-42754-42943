@@ -1,19 +1,17 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package game;
 
 /**
  *
- * @author Duarte
+ * @author Duarte Moreira - 42943
+ * @author Ricardo Ribeiro - 42754
+ * @author Gonçalo Feliciano - 44292
  */
 import com.jme3.animation.AnimChannel;
 import com.jme3.animation.AnimControl;
 import com.jme3.animation.AnimEventListener;
 import com.jme3.animation.LoopMode;
 import com.jme3.app.SimpleApplication;
+import com.jme3.bounding.BoundingBox;
 import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape;
 import com.jme3.bullet.collision.shapes.CollisionShape;
@@ -28,9 +26,6 @@ import com.jme3.input.controls.KeyTrigger;
 import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
 import com.jme3.math.ColorRGBA;
-import com.jme3.math.FastMath;
-import com.jme3.math.Matrix3f;
-import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
@@ -80,53 +75,20 @@ public class Game extends SimpleApplication
     bulletAppState = new BulletAppState();
     stateManager.attach(bulletAppState);
     bulletAppState.setDebugEnabled(true);
-
     viewPort.setBackgroundColor(new ColorRGBA(0.7f, 0.8f, 1f, 1f));
     flyCam.setEnabled(false);
+    
     setUpKeys();
     setUpLight();
-
-    GenerateTerrain generator =  new GenerateTerrain(this.assetManager);
-    TerrainQuad terrain = generator.setupTerrain();
-    rootNode.attachChild(terrain);
-    
-    sceneModel = terrain;
-    CollisionShape sceneShape = CollisionShapeFactory.createMeshShape(sceneModel);
-    landscape = new RigidBodyControl(sceneShape, 0);
-    sceneModel.addControl(landscape);
-    
-    ////////////////////////////////////////////
-    
-    player = assetManager.loadModel("Models/Ninja/Ninja.mesh.xml");
-    player.scale(0.05f, 0.05f, 0.05f);
-    player.rotate(0.0f, -3.0f, 0.0f);
-    player.setLocalTranslation(0.0f, -5.0f, -2.0f);
-    player_phy = new RigidBodyControl(1f);
-    
-    CapsuleCollisionShape capsuleShape = new CapsuleCollisionShape(1.5f, 6f, 1);
-    playerControl = new CharacterControl(capsuleShape, 0.05f);
-    playerControl.setJumpSpeed(20);
-    playerControl.setFallSpeed(30);
-    playerControl.setGravity(30);
-    playerControl.setPhysicsLocation(new Vector3f(0, 10, 0));
-    
-    
-    player.addControl(player_phy);
-    player.addControl(playerControl);
-    bulletAppState.getPhysicsSpace().add(player_phy);
-    
-    player_phy.setGravity(new Vector3f(0f, 0f, 0f)); // no gravity effects
+    setupTerrain();
+    setupPlayer();
     
     targetNode = new Node("targetNode");
-    
     chaseCam = new ChaseCamera(cam, player, inputManager);
     chaseCam.setLookAtOffset(new Vector3f(0,7f,0));
     chaseCam.setDefaultHorizontalRotation((float) -Math.PI/2);
     chaseCam.setInvertVerticalAxis(true);
     //chaseCam.setDragToRotate(false);
-    
-    ///////////////////////////////////////////////
-    
     
     // ANIMAÇOES /////////////////////////////////
     
@@ -140,7 +102,7 @@ public class Game extends SimpleApplication
     animChannel = control.createChannel();
     animChannel.setAnim("Idle1",0.5f);
     
-    // ANIMAÇOES /////////////////////////////////
+    //////////////////////////////////////////////
             
     targetNode.attachChild(player);
     targetNode.attachChild(sceneModel);
@@ -148,6 +110,40 @@ public class Game extends SimpleApplication
     bulletAppState.getPhysicsSpace().add(landscape);
     bulletAppState.getPhysicsSpace().add(player); 
   }
+
+    private void setupTerrain() {
+        GenerateTerrain generator =  new GenerateTerrain(this.assetManager);
+        TerrainQuad terrain = generator.setupTerrain();
+        rootNode.attachChild(terrain);
+        sceneModel = terrain;
+        CollisionShape sceneShape = CollisionShapeFactory.createMeshShape(sceneModel);
+        landscape = new RigidBodyControl(sceneShape, 0);
+        sceneModel.addControl(landscape);
+    }
+
+    private void setupPlayer() {
+        player = assetManager.loadModel("Models/Ninja/Ninja.mesh.xml");
+        player.scale(0.05f, 0.05f, 0.05f);
+        
+        BoundingBox box = (BoundingBox) player.getWorldBound();
+        float height = box.getYExtent();
+        float radius = box.getXExtent() > box.getZExtent() ? box.getXExtent() : box.getZExtent();
+        
+        CapsuleCollisionShape capsuleShape = new CapsuleCollisionShape(radius, height);
+        
+        playerControl = new CharacterControl(capsuleShape, 0.05f);
+        playerControl.setJumpSpeed(20);
+        playerControl.setFallSpeed(30);
+        playerControl.setGravity(30);
+        playerControl.setPhysicsLocation(new Vector3f(0, 10, 0));
+        player.addControl(playerControl);
+        bulletAppState.getPhysicsSpace().add(playerControl);
+        
+        //player.addControl(player_phy);
+        //player_phy = new RigidBodyControl(1f);
+        //player_phy.setGravity(new Vector3f(0f, 0f, 0f)); 
+        //bulletAppState.getPhysicsSpace().add(player_phy);
+    }
 
   private void setUpLight() {
     AmbientLight al = new AmbientLight();
@@ -177,22 +173,22 @@ public class Game extends SimpleApplication
     if (binding.equals("Up")) {
         up = isPressed;
         animChannel.setAnim("Walk");
-        animChannel.setSpeed(0.5f); 
+        animChannel.setSpeed(1f); 
     }
     if (binding.equals("Right")) {
         right = isPressed;
         animChannel.setAnim("Walk");
-        animChannel.setSpeed(0.5f); 
+        animChannel.setSpeed(1f); 
     } 
     if (binding.equals("Left")){
         left = isPressed;
         animChannel.setAnim("Walk");
-        animChannel.setSpeed(0.5f); 
+        animChannel.setSpeed(1f); 
     } 
     if (binding.equals("Down")) {
         down = isPressed;
         animChannel.setAnim("Walk");
-        animChannel.setSpeed(0.5f); 
+        animChannel.setSpeed(1f); 
     } 
     if (binding.equals("Jump")) {
       if (isPressed) { 
@@ -240,7 +236,7 @@ public class Game extends SimpleApplication
         if (animName.equals("Walk")) {
             channel.setAnim("Walk", 0.50f);
             channel.setLoopMode(LoopMode.Loop);
-            channel.setSpeed(0.5f);
+            channel.setSpeed(1.0f);
         }
         if (animName.equals("Idle1")) {
             channel.setAnim("Idle1", 0.50f);
