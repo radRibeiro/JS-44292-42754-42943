@@ -55,7 +55,7 @@ public class Game extends SimpleApplication
   private Vector3f walkDirection = new Vector3f();
   private Vector3f modelFowardDir;
   private Vector3f modelLeftDir;
-  
+  private boolean isDebugMode = false;
   private AnimChannel animChannel;
   private AnimControl control;
   
@@ -70,11 +70,12 @@ public class Game extends SimpleApplication
     app.setSettings(settings);
     app.start();
   }
+   
 
   public void simpleInitApp() {
     bulletAppState = new BulletAppState();
     stateManager.attach(bulletAppState);
-    bulletAppState.setDebugEnabled(true);
+    
     viewPort.setBackgroundColor(new ColorRGBA(0.7f, 0.8f, 1f, 1f));
     flyCam.setEnabled(false);
     
@@ -124,7 +125,7 @@ public class Game extends SimpleApplication
     private void setupPlayer() {
         player = assetManager.loadModel("Models/Ninja/Ninja.mesh.xml");
         player.scale(0.05f, 0.05f, 0.05f);
-        
+        player.setLocalTranslation(new Vector3f(0,0,-1f));
         BoundingBox box = (BoundingBox) player.getWorldBound();
         float height = box.getYExtent();
         float radius = box.getXExtent() > box.getZExtent() ? box.getXExtent() : box.getZExtent();
@@ -162,43 +163,82 @@ public class Game extends SimpleApplication
     inputManager.addMapping("Up", new KeyTrigger(KeyInput.KEY_W));
     inputManager.addMapping("Down", new KeyTrigger(KeyInput.KEY_S));
     inputManager.addMapping("Jump", new KeyTrigger(KeyInput.KEY_SPACE));
+    inputManager.addMapping("DebugMode",new KeyTrigger(KeyInput.KEY_LCONTROL));
     inputManager.addListener(this, "Left");
     inputManager.addListener(this, "Right");
     inputManager.addListener(this, "Up");
     inputManager.addListener(this, "Down");
     inputManager.addListener(this, "Jump");
+    inputManager.addListener(this,"DebugMode");
   }
 
   public void onAction(String binding, boolean isPressed, float tpf) {
-    if (binding.equals("Up")) {
+    if (binding.equals("Up")&&!isDebugMode) {
         up = isPressed;
         animChannel.setAnim("Walk");
         animChannel.setSpeed(1f); 
     }
-    if (binding.equals("Right")) {
+     if (binding.equals("Up")&&isDebugMode) {
+        up = isPressed;
+        animChannel.setAnim("Walk");
+        animChannel.setSpeed(1f); 
+    }
+    if (binding.equals("Right")&&!isDebugMode) {
         right = isPressed;
         animChannel.setAnim("Walk");
         animChannel.setSpeed(1f); 
     } 
-    if (binding.equals("Left")){
+     if (binding.equals("Right")&&isDebugMode) {
+        right = isPressed;
+        animChannel.setAnim("Walk");
+        animChannel.setSpeed(1f); 
+    }
+    
+    if (binding.equals("Left")&&!isDebugMode){
         left = isPressed;
         animChannel.setAnim("Walk");
         animChannel.setSpeed(1f); 
     } 
-    if (binding.equals("Down")) {
+      if (binding.equals("Left")&&isDebugMode){
+        left = isPressed;
+        animChannel.setAnim("Walk");
+        animChannel.setSpeed(1f); 
+    } 
+    if (binding.equals("Down")&&!isDebugMode) {
         down = isPressed;
         animChannel.setAnim("Walk");
         animChannel.setSpeed(1f); 
     } 
-    if (binding.equals("Jump")) {
+    if (binding.equals("Down")&&isDebugMode) {
+        down = isPressed;
+        animChannel.setAnim("Walk");
+        animChannel.setSpeed(1f); 
+    }
+    if (binding.equals("Jump")&&!isDebugMode) {
       if (isPressed) { 
           playerControl.jump();
           animChannel.setAnim("Jump");
           animChannel.setSpeed(0.5f);
       }
     }
+      if (binding.equals("Jump")&&isDebugMode) {
+      if (isPressed) { 
+          playerControl.jump();
+          animChannel.setAnim("Jump");
+          animChannel.setSpeed(0.5f);
+      }
+    }
+    if(binding.equals("DebugMode"))
+    {
+        if (isPressed) { 
+        isDebugMode =!isDebugMode;
+        bulletAppState.setDebugEnabled(isDebugMode);
+        System.out.println("DebugMode: "+isDebugMode);
+        }
+    }
     
-    else if(!isPressed){
+    else if(!isPressed)
+    {
         animChannel.setAnim("Idle1");
         animChannel.setSpeed(0.5f); 
     }
