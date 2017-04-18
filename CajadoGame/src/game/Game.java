@@ -31,6 +31,7 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.system.AppSettings;
 import com.jme3.terrain.geomipmap.TerrainQuad;
+import java.util.Random;
 
 /**
  * Example 9 - How to make walls and floors solid.
@@ -41,9 +42,12 @@ public class Game extends SimpleApplication
         implements AnalogListener, ActionListener, AnimEventListener {
 
   private Node targetNode;
+  private Node objectNode;
   private Spatial sceneModel;
   private Spatial player;
+  private Spatial objective;
   private CharacterControl playerControl;
+  private CharacterControl itemsControl;
   private BulletAppState bulletAppState;
   private RigidBodyControl landscape;
   private RigidBodyControl player_phy;
@@ -56,6 +60,7 @@ public class Game extends SimpleApplication
   private Vector3f modelFowardDir;
   private Vector3f modelLeftDir;
   private boolean isDebugMode = false;
+  private boolean isCollisionDebug = false;
   private AnimChannel animChannel;
   private AnimControl control;
   
@@ -83,8 +88,11 @@ public class Game extends SimpleApplication
     setUpLight();
     setupTerrain();
     setupPlayer();
+    setupItems();
     
     targetNode = new Node("targetNode");
+    objectNode = new Node("objectNode");
+    
     chaseCam = new ChaseCamera(cam, player, inputManager);
     chaseCam.setLookAtOffset(new Vector3f(0,7f,0));
     chaseCam.setDefaultHorizontalRotation((float) -Math.PI/2);
@@ -107,9 +115,12 @@ public class Game extends SimpleApplication
             
     targetNode.attachChild(player);
     targetNode.attachChild(sceneModel);
+    targetNode.attachChild(objective);
     rootNode.attachChild(targetNode);
+    rootNode.attachChild(objectNode);
     bulletAppState.getPhysicsSpace().add(landscape);
     bulletAppState.getPhysicsSpace().add(player); 
+    bulletAppState.getPhysicsSpace().add(objective); 
   }
 
     private void setupTerrain() {
@@ -125,9 +136,9 @@ public class Game extends SimpleApplication
     private void setupPlayer() {
         player = assetManager.loadModel("Models/Ninja/Ninja.mesh.xml");
         player.scale(0.05f, 0.05f, 0.05f);
-        player.setLocalTranslation(new Vector3f(0,0,-1f));
+    /*    player.setLocalTranslation(new Vector3f(0,0,-1f));*/
         BoundingBox box = (BoundingBox) player.getWorldBound();
-        float height = box.getYExtent();
+        float height = box.getYExtent()-3f;
         float radius = box.getXExtent() > box.getZExtent() ? box.getXExtent() : box.getZExtent();
         
         CapsuleCollisionShape capsuleShape = new CapsuleCollisionShape(radius, height);
@@ -136,7 +147,7 @@ public class Game extends SimpleApplication
         playerControl.setJumpSpeed(20);
         playerControl.setFallSpeed(30);
         playerControl.setGravity(30);
-        playerControl.setPhysicsLocation(new Vector3f(0, 10, 0));
+        playerControl.setPhysicsLocation(new Vector3f(0, 5, 0));
         player.addControl(playerControl);
         bulletAppState.getPhysicsSpace().add(playerControl);
         
@@ -145,7 +156,28 @@ public class Game extends SimpleApplication
         //player_phy.setGravity(new Vector3f(0f, 0f, 0f)); 
         //bulletAppState.getPhysicsSpace().add(player_phy);
     }
-
+    private void setupItems() {
+        objective = assetManager.loadModel("Models/Tree/Tree.mesh.xml");
+        //objective.scale(5f, 10f, 5f);
+        Random r = new Random();
+        
+        int spawnX = r.nextInt(512);
+        int spawnZ = r.nextInt(512);
+        objective.setLocalTranslation(new Vector3f(spawnX,1,spawnZ));
+        BoundingBox box = (BoundingBox) objective.getWorldBound();
+        float height = box.getYExtent()-0.5f;
+        float radius = box.getXExtent() > box.getZExtent() ? box.getXExtent() : box.getZExtent();
+        CapsuleCollisionShape capsuleShape = new CapsuleCollisionShape(radius, height);
+        itemsControl = new CharacterControl(capsuleShape,0.05f);
+      
+        itemsControl.setFallSpeed(30);
+        itemsControl.setGravity(30);
+        itemsControl.setPhysicsLocation(new Vector3f(0, 1f, 0));
+        objective.addControl(itemsControl);
+        bulletAppState.getPhysicsSpace().add(itemsControl);
+      
+      
+    }
   private void setUpLight() {
     AmbientLight al = new AmbientLight();
     al.setColor(ColorRGBA.White.mult(1.3f));
@@ -164,12 +196,14 @@ public class Game extends SimpleApplication
     inputManager.addMapping("Down", new KeyTrigger(KeyInput.KEY_S));
     inputManager.addMapping("Jump", new KeyTrigger(KeyInput.KEY_SPACE));
     inputManager.addMapping("DebugMode",new KeyTrigger(KeyInput.KEY_LCONTROL));
+    inputManager.addMapping("CollisionsDebug",new KeyTrigger(KeyInput.KEY_T));
     inputManager.addListener(this, "Left");
     inputManager.addListener(this, "Right");
     inputManager.addListener(this, "Up");
     inputManager.addListener(this, "Down");
     inputManager.addListener(this, "Jump");
     inputManager.addListener(this,"DebugMode");
+    inputManager.addListener(this,"CollisionsDebug");
   }
 
   public void onAction(String binding, boolean isPressed, float tpf) {
@@ -223,29 +257,35 @@ public class Game extends SimpleApplication
     }
       if (binding.equals("Jump")&&isDebugMode) {
       if (isPressed) { 
-          playerControl.jump();
-          animChannel.setAnim("Jump");
-          animChannel.setSpeed(0.5f);
+          
       }
     }
     if(binding.equals("DebugMode"))
     {
         if (isPressed) { 
         isDebugMode =!isDebugMode;
-        bulletAppState.setDebugEnabled(isDebugMode);
+       
         System.out.println("DebugMode: "+isDebugMode);
         }
     }
-    
+    if(binding.equals("CollisionsDebug"))
+    {
+        if (isPressed) 
+        { 
+            isCollisionDebug=!isCollisionDebug;
+            bulletAppState.setDebugEnabled(isCollisionDebug);
+        }
+    }
     else if(!isPressed)
     {
         animChannel.setAnim("Idle1");
         animChannel.setSpeed(0.5f); 
     }
   }
-
+    
   @Override
-    public void simpleUpdate(float tpf) {
+    public void simpleUpdate(float tpf) 
+    {
         modelFowardDir = cam.getRotation().mult(Vector3f.UNIT_Z).multLocal(1,0,1);
         modelLeftDir = cam.getRotation().mult(Vector3f.UNIT_X);
         walkDirection = new Vector3f(0,0,0);
@@ -266,6 +306,7 @@ public class Game extends SimpleApplication
             walkDirection.addLocal(modelFowardDir.negate());
             playerControl.getViewDirection().set(modelFowardDir);
         }
+      
         playerControl.setWalkDirection(walkDirection);
         cam.setLocation(playerControl.getPhysicsLocation());
         
@@ -298,4 +339,6 @@ public class Game extends SimpleApplication
     @Override
     public void onAnalog(String name, float value, float tpf) {
     }
+
+   
 }
