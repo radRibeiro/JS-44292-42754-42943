@@ -31,6 +31,8 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.system.AppSettings;
 import com.jme3.terrain.geomipmap.TerrainQuad;
+import com.jme3.util.SkyFactory;
+import util.NiftyAppState;
 
 /**
  * Example 9 - How to make walls and floors solid.
@@ -49,22 +51,26 @@ public class Game extends SimpleApplication
   private RigidBodyControl player_phy;
   private ChaseCamera chaseCam;
   private boolean left = false, right = false, up = false, down = false;
+  private boolean minimapRendered, gameScreen;
   
   private Vector3f camDir = new Vector3f();
   private Vector3f camLeft = new Vector3f();
   private Vector3f walkDirection = new Vector3f();
+  private Vector3f viewDirection = new Vector3f();
   private Vector3f modelFowardDir;
   private Vector3f modelLeftDir;
   
   private AnimChannel animChannel;
   private AnimControl control;
   
+  private NiftyAppState appState;
+  
 
   public static void main(String[] args) {
     Game app = new Game();
     app.setShowSettings(false);
     AppSettings settings = new AppSettings(true);
-    settings.setResolution(1024, 768);
+    settings.setResolution(800, 600);
     settings.setBitsPerPixel(32);
     settings.setVSync(true);
     app.setSettings(settings);
@@ -72,6 +78,12 @@ public class Game extends SimpleApplication
   }
 
   public void simpleInitApp() {
+    appState = new NiftyAppState();
+    stateManager.attach(appState);
+    
+    getRootNode().attachChild(SkyFactory.createSky(getAssetManager(), 
+            "Textures/Sky/Bright/BrightSky.dds", SkyFactory.EnvMapType.CubeMap));
+    
     bulletAppState = new BulletAppState();
     stateManager.attach(bulletAppState);
     bulletAppState.setDebugEnabled(true);
@@ -208,27 +220,41 @@ public class Game extends SimpleApplication
     public void simpleUpdate(float tpf) {
         modelFowardDir = cam.getRotation().mult(Vector3f.UNIT_Z).multLocal(1,0,1);
         modelLeftDir = cam.getRotation().mult(Vector3f.UNIT_X);
+        viewDirection = new Vector3f(0,0,0);
         walkDirection = new Vector3f(0,0,0);
        
         if (left) {
             walkDirection.addLocal(modelLeftDir);
-            playerControl.getViewDirection().set(modelLeftDir.negate());
+            viewDirection.addLocal(modelLeftDir.negate());
         }
         if (right) {
             walkDirection.addLocal(modelLeftDir.negate());
-            playerControl.getViewDirection().set(modelLeftDir);
+            viewDirection.addLocal(modelLeftDir);
         }
         if (up) {
             walkDirection.addLocal(modelFowardDir);
-            playerControl.getViewDirection().set(modelFowardDir.negate());
+            viewDirection.addLocal(modelFowardDir.negate());
         }
         if (down) {
             walkDirection.addLocal(modelFowardDir.negate());
-            playerControl.getViewDirection().set(modelFowardDir);
+            viewDirection.addLocal(modelFowardDir);
         }
         playerControl.setWalkDirection(walkDirection);
+        playerControl.setViewDirection(viewDirection);
         cam.setLocation(playerControl.getPhysicsLocation());
         
+        //// Nifty ///////////////////////
+//         if(!gameScreen){
+//            appState.getNifty().gotoScreen("gameScreen");
+//            gameScreen = true;
+//        }else if(!minimapRendered ){
+//            try {
+//                ((GameScreenController)appState.getNifty().getScreen("gameScreen").getScreenController()).createMinimap(sceneModel, this);
+//            } catch (Exception ex) {
+//                Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
+//            }
+//            minimapRendered = true;
+//        }      
     }
 
     @Override
