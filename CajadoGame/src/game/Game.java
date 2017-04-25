@@ -25,14 +25,18 @@ import com.jme3.input.controls.AnalogListener;
 import com.jme3.input.controls.KeyTrigger;
 import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
+import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
+import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.jme3.scene.shape.Sphere;
 import com.jme3.system.AppSettings;
 import com.jme3.terrain.geomipmap.TerrainQuad;
 import com.jme3.util.SkyFactory;
 import util.NiftyAppState;
+import util.TreeControl;
 
 /**
  * Example 9 - How to make walls and floors solid.
@@ -131,6 +135,31 @@ public class Game extends SimpleApplication
         CollisionShape sceneShape = CollisionShapeFactory.createMeshShape(sceneModel);
         landscape = new RigidBodyControl(sceneShape, 0);
         sceneModel.addControl(landscape);
+        
+        
+        
+        
+            //arbores
+    
+       Geometry tree = new Geometry("Tree", new Sphere(3, 3, 3));
+        Material m = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        m.setColor("Color", ColorRGBA.Green);
+        tree.setMaterial(m);
+        
+        
+        TreeControl treeControl = new TreeControl();
+        treeControl.setTreeModel(tree);
+        
+      
+       /*
+                Spatial tree2  = assetManager.loadModel("Models/Jaime/Jaime.j3o");
+                treeControl.setTreeModel(tree2);
+        */
+      
+      
+               
+       rootNode.addControl(treeControl);
+        
     }
 
     private void setupPlayer() {
