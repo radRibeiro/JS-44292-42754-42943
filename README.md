@@ -12,7 +12,7 @@ Ricardo Ribeiro   <42754>   - rad.ribeiro@campus.fct.unl.pt
         Ir em frente, W;
         Recuar, S;
         Saltar, SPACE;
-        Modo camera livre/Debug, Y; (Controlos FlyCam - WASD para movimento, Q sobe, Z desce a camera);
+        Modo camera livre/Debug, Y (Controlos FlyCam - WASD para movimento, Q sobe, Z desce a camera);
         Debug Colisões,T;
 ## 1ª fase: ##
 
