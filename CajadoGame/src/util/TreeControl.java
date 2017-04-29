@@ -45,8 +45,8 @@ public class TreeControl extends AbstractControl{
     private List<Spatial> bananaList;
     private List<RigidBodyControl> treePhys;
     
-    private int treeLimit = 45;
-    private int bananaLimit = 10;
+    private int treeLimit = 60;
+    private int bananaLimit = 20;
     
     
     private static final int BANANA_SCALE = 25;
@@ -83,20 +83,21 @@ public class TreeControl extends AbstractControl{
                 this.terrain = (TerrainQuad) s;
                 
                 int size = (int) (terrain.getTerrainSize());
-                for(int x = -size; x < size; x++){
-                    for(int y = -size; y < size; y++){
+                for(int x = -size; x < size; x+=4){
+                    for(int y = -size; y < size; y+=4){
                         float value = fractalSum.value(x, 0, y);
                         float terrainHeight = terrain.getHeight(new Vector2f(x, y));
                       
-                        if(value > 0.9f && terrainHeight < treeLimit){
+                        if(value > 0.90f && terrainHeight < treeLimit){
                             Spatial treeClone = treeModel.clone();
                             Random r = new Random();
-                            RigidBodyControl treeBody = new RigidBodyControl(0);
-                            treeClone.addControl(treeBody);
+                    
                             treeClone.scale(2 +r.nextInt(6),2 +r.nextInt(15),2 +r.nextInt(6));
                             Vector3f location = new Vector3f((x), terrainHeight, (y));
                             treeClone.setLocalTranslation(location);
                             treeNode.attachChild(treeClone);
+                            RigidBodyControl treeBody = new RigidBodyControl(0);
+                            treeClone.addControl(treeBody);
                         }
                         else if((value<= 0.9 && value>0.75)&& terrainHeight < bananaLimit)
                         {
@@ -114,7 +115,7 @@ public class TreeControl extends AbstractControl{
                 ((Node)spatial).attachChild(treeNode);
                 ((Node)spatial).attachChild(bananaNode);
                 
-                for(RigidBodyControl rb : treePhys){
+               for(RigidBodyControl rb : treePhys){
                     bullet.getPhysicsSpace().add(rb);
                 }
             }

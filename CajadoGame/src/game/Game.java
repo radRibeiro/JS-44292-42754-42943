@@ -30,12 +30,15 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.shadow.BasicShadowRenderer;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
+import com.jme3.post.FilterPostProcessor;
 import com.jme3.renderer.Camera;
 import com.jme3.renderer.queue.RenderQueue.ShadowMode;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.debug.WireFrustum;
+import com.jme3.shadow.PssmShadowFilter;
+import com.jme3.shadow.PssmShadowRenderer;
 import com.jme3.shadow.ShadowUtil;
 import com.jme3.system.AppSettings;
 import com.jme3.terrain.geomipmap.TerrainQuad;
@@ -75,8 +78,8 @@ public class Game extends SimpleApplication
   private AnimChannel animChannel;
   private AnimControl control;
   
-  private BasicShadowRenderer bsr;
-  
+  private PssmShadowRenderer bsr;
+  private PssmShadowFilter psf;
   private final static int WINDOW_WIDTH = 800;
   private final static int WINDOW_HEIGHT = 600;
   
@@ -117,16 +120,9 @@ public class Game extends SimpleApplication
   public void simpleInitApp() {
     getRootNode().attachChild(SkyFactory.createSky(getAssetManager(), 
             "Textures/Sky/Bright/BrightSky.dds", SkyFactory.EnvMapType.CubeMap));
-    bsr = new BasicShadowRenderer(assetManager,512);
-    bsr.setDirection(new Vector3f(-1,-1,-1).normalizeLocal());
-    viewPort.addProcessor(bsr);
-    frustum = new WireFrustum(bsr.getPoints());
-    frustumMdl = new Geometry("f",frustum);
-    frustumMdl.setCullHint(Spatial.CullHint.Never);
-    frustumMdl.setShadowMode(ShadowMode.Off);
+  
     bulletAppState = new BulletAppState();
     stateManager.attach(bulletAppState);
-    //bulletAppState.setDebugEnabled(true);
     viewPort.setBackgroundColor(new ColorRGBA(0.7f, 0.8f, 1f, 1f));
     flyCam.setEnabled(false);
     
@@ -187,10 +183,13 @@ public class Game extends SimpleApplication
         
         tree = assetManager.loadModel("Models/Tree/Tree.mesh.xml");
         tree.scale(6f,10f,6f); 
-        
+        tree.setShadowMode(ShadowMode.CastAndReceive);
+        RigidBodyControl treeBody = new RigidBodyControl(0);
+        tree.addControl(treeBody);
         //bananas
        
         banana = assetManager.loadModel("Models/Banana/banana.j3o");
+        banana.setShadowMode(ShadowMode.CastAndReceive);
         TreeControl treeControl = new TreeControl(bulletAppState);
         treeControl.setTreeModel(tree);
         treeControl.setBananaModel(banana);
@@ -232,6 +231,8 @@ public class Game extends SimpleApplication
       height.setText("height = " + y);
       return new Vector3f(x,y+20,z);
     }
+  
+  
   private void setUpLight() {
     AmbientLight al = new AmbientLight();
     al.setColor(ColorRGBA.White.mult(1.3f));
@@ -241,6 +242,29 @@ public class Game extends SimpleApplication
     dl.setColor(ColorRGBA.White);
     dl.setDirection(new Vector3f(2.8f, -2.8f, -2.8f).normalizeLocal());
     rootNode.addLight(dl);
+    
+    bsr = new PssmShadowRenderer(assetManager,512,3);
+    bsr.setDirection(new Vector3f(2.8f,-2.8f,-2.8f).normalizeLocal());
+    bsr.setLambda(0.55f);
+    bsr.setShadowIntensity(0.5f);
+   
+    bsr.setCompareMode(PssmShadowRenderer.CompareMode.Hardware);
+    bsr.setFilterMode(PssmShadowRenderer.FilterMode.Dither);
+    viewPort.addProcessor(bsr);
+    
+    
+   
+    psf = new PssmShadowFilter(assetManager,1024,3);
+    psf.setLambda(0.55f);
+    psf.setShadowIntensity(0.5f);
+    psf.setCompareMode(PssmShadowRenderer.CompareMode.Hardware);
+    psf.setFilterMode(PssmShadowRenderer.FilterMode.Dither);
+    psf.setEnabled(false);
+
+    FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
+       
+    fpp.addFilter(psf);
+    viewPort.addProcessor(fpp);
   }
 
   private void setUpKeys() {
@@ -298,6 +322,21 @@ public class Game extends SimpleApplication
         { 
             isCollisionDebug=!isCollisionDebug;
             bulletAppState.setDebugEnabled(isCollisionDebug);
+              bsr.displayFrustum();
+        }
+    }
+     if(binding.equals("DebugMode")&& !pauseScreen)
+    {
+        if (isPressed) 
+        { 
+            isDebugMode=!isDebugMode;
+            bulletAppState.setDebugEnabled(isDebugMode);
+            if(isDebugMode)
+            {
+              bsr.displayFrustum();
+              
+            }
+           
         }
     }
     if(binding.equals("Pause"))
@@ -317,8 +356,8 @@ public class Game extends SimpleApplication
 
   @Override
     public void simpleUpdate(float tpf) {
-        Camera shadowCam = bsr.getShadowCamera();
-        ShadowUtil.updateFrustumPoints2(shadowCam,points);
+      //  Camera shadowCam = bsr.getShadowCamera();
+      //  ShadowUtil.updateFrustumPoints2(shadowCam,points);
         
         modelFowardDir = cam.getRotation().mult(Vector3f.UNIT_Z).multLocal(1,0,1);
         modelLeftDir = cam.getRotation().mult(Vector3f.UNIT_X);
