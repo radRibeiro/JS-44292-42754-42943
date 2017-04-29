@@ -7,7 +7,7 @@ Gonçalo Feliciano <44292>   - g.feliciano@campus.fct.unl.pt
 Ricardo Ribeiro   <42754>   - rad.ribeiro@campus.fct.unl.pt
 
 ## Controlos ##
-       Ir para a esquerda, A;
+        Ir para a esquerda, A;
         Ir para a direita", D;
         Ir em frente, W;
         Recuar, S;
