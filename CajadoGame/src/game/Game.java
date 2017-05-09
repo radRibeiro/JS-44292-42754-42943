@@ -1,26 +1,26 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
 package game;
 
 /**
  *
- * @author Duarte Moreira - 42943
- * @author Ricardo Ribeiro - 42754
- * @author Gonçalo Feliciano - 44292
+ * @author Duarte
  */
-import util.GenerateTerrain;
+import chapter03.control.TreeControl;
 import com.jme3.animation.AnimChannel;
 import com.jme3.animation.AnimControl;
 import com.jme3.animation.AnimEventListener;
 import com.jme3.animation.LoopMode;
 import com.jme3.app.SimpleApplication;
 import com.jme3.bullet.BulletAppState;
-import com.jme3.bullet.collision.PhysicsCollisionEvent;
-import com.jme3.bullet.collision.PhysicsCollisionListener;
 import com.jme3.bullet.collision.shapes.CapsuleCollisionShape;
 import com.jme3.bullet.collision.shapes.CollisionShape;
 import com.jme3.bullet.control.CharacterControl;
 import com.jme3.bullet.control.RigidBodyControl;
 import com.jme3.bullet.util.CollisionShapeFactory;
-import com.jme3.font.BitmapText;
 import com.jme3.input.ChaseCamera;
 import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
@@ -28,353 +28,243 @@ import com.jme3.input.controls.AnalogListener;
 import com.jme3.input.controls.KeyTrigger;
 import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
+import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
-import com.jme3.math.Vector2f;
+import com.jme3.math.FastMath;
+import com.jme3.math.Matrix3f;
+import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
-import com.jme3.post.FilterPostProcessor;
-import com.jme3.renderer.queue.RenderQueue.ShadowMode;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
-import com.jme3.scene.debug.WireFrustum;
-import com.jme3.shadow.PssmShadowFilter;
-import com.jme3.shadow.PssmShadowRenderer;
+import com.jme3.scene.shape.Sphere;
 import com.jme3.system.AppSettings;
 import com.jme3.terrain.geomipmap.TerrainQuad;
-import com.jme3.util.SkyFactory;
-import java.util.Random;
-import util.*;
 
+/**
+ * Example 9 - How to make walls and floors solid.
+ * This collision code uses Physics and a custom Action Listener.
+ * @author normen, with edits by Zathras
+ */
 public class Game extends SimpleApplication
-        implements AnalogListener, ActionListener, AnimEventListener, PhysicsCollisionListener {
+        implements AnalogListener, ActionListener, AnimEventListener {
 
-    private Node targetNode;
-    private Spatial sceneModel;
-    private Spatial player;
-    private Spatial tree, banana;
+  private Node targetNode;
+  private Spatial sceneModel;
+  private Spatial player;
+  private CharacterControl playerControl;
+  private BulletAppState bulletAppState;
+  private RigidBodyControl landscape;
+  private RigidBodyControl player_phy;
+  private ChaseCamera chaseCam;
+  private boolean left = false, right = false, up = false, down = false;
+  
+  private Vector3f camDir = new Vector3f();
+  private Vector3f camLeft = new Vector3f();
+  private Vector3f walkDirection = new Vector3f();
+  private Vector3f modelFowardDir;
+  private Vector3f modelLeftDir;
+  
+  private AnimChannel animChannel;
+  private AnimControl control;
+  
 
-    private CharacterControl playerControl;
-    private BulletAppState bulletAppState;
-    private RigidBodyControl landscape;
-    private ChaseCamera chaseCam;
-    private boolean left = false, right = false, up = false, down = false;
-    private boolean isFlyCam = false;
-    private boolean isCollisionDebug = false;
-    private boolean pauseScreen = false;
+  public static void main(String[] args) {
+    Game app = new Game();
+    app.setShowSettings(false);
+    AppSettings settings = new AppSettings(true);
+    settings.setResolution(1024, 768);
+    settings.setBitsPerPixel(32);
+    settings.setVSync(true);
+    app.setSettings(settings);
+    app.start();
+  }
 
-    private TerrainQuad terrain;
-    private TreeControl treeControl;
+  public void simpleInitApp() {
+    bulletAppState = new BulletAppState();
+    stateManager.attach(bulletAppState);
+    bulletAppState.setDebugEnabled(true);
 
-    private Vector3f camDir = new Vector3f();
-    private Vector3f camLeft = new Vector3f();
-    private Vector3f walkDirection = new Vector3f();
-    private Vector3f viewDirection = new Vector3f();
-    private Vector3f modelFowardDir;
-    private Vector3f modelLeftDir;
+    viewPort.setBackgroundColor(new ColorRGBA(0.7f, 0.8f, 1f, 1f));
+    flyCam.setEnabled(false);
+    setUpKeys();
+    setUpLight();
 
-    private AnimChannel animChannel;
-    private AnimControl control;
-
-    private PssmShadowRenderer bsr;
-    private PssmShadowFilter psf;
-
-    private final static int WINDOW_WIDTH = 800;
-    private final static int WINDOW_HEIGHT = 600;
-
-    private Vector3f[] points;
-    private Geometry frustumMdl;
-    private WireFrustum frustum;
-
-    private BitmapText xLoc;
-    private BitmapText yLoc;
-    private BitmapText zLoc;
-    private BitmapText height;
-    private BitmapText playerX;
-    private BitmapText playerY;
-    private BitmapText playerZ;
-    private BitmapText bananaCounter;
-
-    private int bananasCaught = 0;
-
-    {
-        points = new Vector3f[8];
-        for (int i = 0; i < points.length; i++) {
-            points[i] = new Vector3f();
-        }
-    }
-
-    public static void main(String[] args) {
-        Game app = new Game();
-        setupAppSettings(app);
-        app.start();
-    }
-
-    private static void setupAppSettings(Game app) {
-        app.setShowSettings(false);
-        AppSettings settings = new AppSettings(true);
-        settings.setResolution(WINDOW_WIDTH, WINDOW_HEIGHT);
-        settings.setBitsPerPixel(32);
-        settings.setVSync(true);
-        app.setSettings(settings);
-    }
-
-    public void simpleInitApp() {
-        bulletAppState = new BulletAppState();
-        stateManager.attach(bulletAppState);
-        
-        setupSkyMap();
-        setupKeys();
-        setupLight();
-        setupShadows();
-        setupTerrain();
-        setupPlayer();
-        setupAnimations();
-        setupChaseCam();
-        
-        playerX = createDebugText(200, 100, "");
-        playerY = createDebugText(400, 100, "");
-        playerZ = createDebugText(600, 100, "");
-        bananaCounter = createDebugText(10, WINDOW_HEIGHT - 10, "Bananas : 0/" + treeControl.getBananaCount());
-
-        targetNode.attachChild(player);
-        targetNode.attachChild(sceneModel);
-        rootNode.attachChild(targetNode);
-        bulletAppState.getPhysicsSpace().add(landscape);
-        bulletAppState.getPhysicsSpace().add(player);
-        bulletAppState.getPhysicsSpace().addCollisionListener(this);
-
-    }
-
-    private void setupShadows() {
-        bsr = new PssmShadowRenderer(assetManager, 512, 3);
-        bsr.setDirection(new Vector3f(2.8f, -2.8f, -2.8f).normalizeLocal());
-        bsr.setLambda(0.55f);
-        bsr.setShadowIntensity(0.5f);
-
-        bsr.setCompareMode(PssmShadowRenderer.CompareMode.Hardware);
-        bsr.setFilterMode(PssmShadowRenderer.FilterMode.Dither);
-        viewPort.addProcessor(bsr);
-
-        psf = new PssmShadowFilter(assetManager, 1024, 3);
-        psf.setLambda(0.55f);
-        psf.setShadowIntensity(0.5f);
-        psf.setCompareMode(PssmShadowRenderer.CompareMode.Hardware);
-        psf.setFilterMode(PssmShadowRenderer.FilterMode.Dither);
-        psf.setEnabled(false);
-
-        FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
-
-        fpp.addFilter(psf);
-        viewPort.addProcessor(fpp);
-    }
-
-    private void setupSkyMap() {
-        getRootNode().attachChild(SkyFactory.createSky(getAssetManager(),
-                "Textures/Sky/Bright/BrightSky.dds", SkyFactory.EnvMapType.CubeMap));
-    }
-
-    private void setupChaseCam() {
-        flyCam.setMoveSpeed(20f);
-        targetNode = new Node("targetNode");
-        chaseCam = new ChaseCamera(cam, player, inputManager);
-        chaseCam.setLookAtOffset(new Vector3f(0, 5f, 0));
-        chaseCam.setDefaultHorizontalRotation((float) -Math.PI / 2);
-        chaseCam.setInvertVerticalAxis(true);
-    }
-
-    private void setupAnimations() {
-        control = player.getControl(AnimControl.class);
-        control.addListener(this);
-
-        for (String anim : control.getAnimationNames()) {
-            System.out.println(anim);
-        }
-        animChannel = control.createChannel();
-        animChannel.setAnim("Idle", 0.5f);
-    }
-
-    private void setupTerrain() {
-
-        // terrain
-        GenerateTerrain generator = new GenerateTerrain(this.assetManager);
-        terrain = generator.setupTerrain();
-        rootNode.attachChild(terrain);
-        sceneModel = terrain;
-        CollisionShape sceneShape = CollisionShapeFactory.createMeshShape(sceneModel);
-        landscape = new RigidBodyControl(sceneShape, 0);
-        sceneModel.addControl(landscape);
-
-        //trees
-        tree = assetManager.loadModel("Models/Tree/Tree.mesh.xml");
-        tree.scale(6f, 10f, 6f);
-        tree.setShadowMode(ShadowMode.CastAndReceive);
-
-        //bananas
-        banana = assetManager.loadModel("Models/Banana/banana.j3o");
-        banana.setShadowMode(ShadowMode.CastAndReceive);
-
-        treeControl = new TreeControl(bulletAppState);
+    GenerateTerrain generator =  new GenerateTerrain(this.assetManager);
+    TerrainQuad terrain = generator.setupTerrain();
+    rootNode.attachChild(terrain);
+    
+    sceneModel = terrain;
+    CollisionShape sceneShape = CollisionShapeFactory.createMeshShape(sceneModel);
+    landscape = new RigidBodyControl(sceneShape, 0);
+    sceneModel.addControl(landscape);
+    
+    
+    //trees
+    Geometry tree = new Geometry("Tree", new Sphere(5, 5, 1));
+        Material m = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        m.setColor("Color", ColorRGBA.Green);
+        tree.setMaterial(m);
+        TreeControl treeControl = new TreeControl();
         treeControl.setTreeModel(tree);
-        treeControl.setBananaModel(banana);
-        rootNode.addControl(treeControl);
-        rootNode.setShadowMode(ShadowMode.Off);
+        sceneModel.addControl(treeControl);
+    ////////////////////////////////////////////
+    
+    player = assetManager.loadModel("Models/Ninja/Ninja.mesh.xml");
+    player.scale(0.05f, 0.05f, 0.05f);
+    player.rotate(0.0f, -3.0f, 0.0f);
+    player.setLocalTranslation(0.0f, -5.0f, -2.0f);
+    player_phy = new RigidBodyControl(1f);
+    
+    CapsuleCollisionShape capsuleShape = new CapsuleCollisionShape(1.5f, 6f, 1);
+    playerControl = new CharacterControl(capsuleShape, 0.05f);
+    playerControl.setJumpSpeed(20);
+    playerControl.setFallSpeed(30);
+    playerControl.setGravity(30);
+    playerControl.setPhysicsLocation(new Vector3f(0, 10, 0));
+    
+    
+    player.addControl(player_phy);
+    player.addControl(playerControl);
+
+    bulletAppState.getPhysicsSpace().add(player_phy);
+    
+    player_phy.setGravity(new Vector3f(0f, 0f, 0f)); // no gravity effects
+    
+    targetNode = new Node("targetNode");
+    
+    chaseCam = new ChaseCamera(cam, player, inputManager);
+    chaseCam.setLookAtOffset(new Vector3f(0,7f,0));
+    chaseCam.setDefaultHorizontalRotation((float) -Math.PI/2);
+    chaseCam.setInvertVerticalAxis(true);
+    //chaseCam.setDragToRotate(false);
+    
+    ///////////////////////////////////////////////
+    
+    
+    // ANIMAÇOES /////////////////////////////////
+    
+    control = player.getControl(AnimControl.class);
+    control.addListener(this);
+    
+    for (String anim : control.getAnimationNames()) {
+        System.out.println(anim);
     }
+    
+    animChannel = control.createChannel();
+    animChannel.setAnim("Idle1",0.5f);
+    
+    // ANIMAÇOES /////////////////////////////////
+            
+    targetNode.attachChild(player);
+    targetNode.attachChild(sceneModel);
+    rootNode.attachChild(targetNode);
+    bulletAppState.getPhysicsSpace().add(landscape);
+    bulletAppState.getPhysicsSpace().add(player); 
+  }
 
-    private void setupPlayer() {
-        player = assetManager.loadModel("Models/Jaime/Jaime.j3o");
-        player.setName("player");
-        player.scale(4f, 4f, 4f);
-        player.setShadowMode(ShadowMode.CastAndReceive);
+  private void setUpLight() {
+    AmbientLight al = new AmbientLight();
+    al.setColor(ColorRGBA.White.mult(1.3f));
+    rootNode.addLight(al);
 
-        CapsuleCollisionShape capsuleShape = new CapsuleCollisionShape(5f, 0.1f);
-        playerControl = new CharacterControl(capsuleShape, 0.05f);
-        playerControl.setJumpSpeed(20);
-        playerControl.setFallSpeed(30);
-        playerControl.setGravity(30);
+    DirectionalLight dl = new DirectionalLight();
+    dl.setColor(ColorRGBA.White);
+    dl.setDirection(new Vector3f(2.8f, -2.8f, -2.8f).normalizeLocal());
+    rootNode.addLight(dl);
+  }
 
-        Vector3f pos = spawnPosition();
-        player.setLocalTranslation(pos);
-        player.addControl(playerControl);
-        bulletAppState.getPhysicsSpace().add(playerControl);
+  private void setUpKeys() {
+    inputManager.addMapping("Left", new KeyTrigger(KeyInput.KEY_A));
+    inputManager.addMapping("Right", new KeyTrigger(KeyInput.KEY_D));
+    inputManager.addMapping("Up", new KeyTrigger(KeyInput.KEY_W));
+    inputManager.addMapping("Down", new KeyTrigger(KeyInput.KEY_S));
+    inputManager.addMapping("Jump", new KeyTrigger(KeyInput.KEY_SPACE));
+    inputManager.addListener(this, "Left");
+    inputManager.addListener(this, "Right");
+    inputManager.addListener(this, "Up");
+    inputManager.addListener(this, "Down");
+    inputManager.addListener(this, "Jump");
+  }
+
+  public void onAction(String binding, boolean isPressed, float tpf) {
+    if (binding.equals("Up")) {
+        up = isPressed;
+        animChannel.setAnim("Walk");
+        animChannel.setSpeed(0.5f); 
     }
-
-    private Vector3f spawnPosition() {
-        Random r = new Random();
-        int x = r.nextInt(512);
-        int z = r.nextInt(512);
-        Vector2f xz = new Vector2f(x, z);
-        int y = (int) terrain.getHeight(xz);
-        return new Vector3f(x, y + 20, z);
+    if (binding.equals("Right")) {
+        right = isPressed;
+        animChannel.setAnim("Walk");
+        animChannel.setSpeed(0.5f); 
+    } 
+    if (binding.equals("Left")){
+        left = isPressed;
+        animChannel.setAnim("Walk");
+        animChannel.setSpeed(0.5f); 
+    } 
+    if (binding.equals("Down")) {
+        down = isPressed;
+        animChannel.setAnim("Walk");
+        animChannel.setSpeed(0.5f); 
+    } 
+    if (binding.equals("Jump")) {
+      if (isPressed) { 
+          playerControl.jump();
+          animChannel.setAnim("Jump");
+          animChannel.setSpeed(0.5f);
+      }
     }
-
-    private void setupLight() {
-        AmbientLight al = new AmbientLight();
-        al.setColor(ColorRGBA.White.mult(1.3f));
-        rootNode.addLight(al);
-
-        DirectionalLight dl = new DirectionalLight();
-        dl.setColor(ColorRGBA.White);
-        dl.setDirection(new Vector3f(2.8f, -2.8f, -2.8f).normalizeLocal());
-        rootNode.addLight(dl);
-
-        
+    
+    else if(!isPressed){
+        animChannel.setAnim("Idle1");
+        animChannel.setSpeed(0.5f); 
     }
+  }
 
-    private void setupKeys() {
-        inputManager.addMapping("Left", new KeyTrigger(KeyInput.KEY_A));
-        inputManager.addMapping("Right", new KeyTrigger(KeyInput.KEY_D));
-        inputManager.addMapping("Up", new KeyTrigger(KeyInput.KEY_W));
-        inputManager.addMapping("Down", new KeyTrigger(KeyInput.KEY_S));
-        inputManager.addMapping("Jump", new KeyTrigger(KeyInput.KEY_SPACE));
-        inputManager.addMapping("FlyMode", new KeyTrigger(KeyInput.KEY_Y));
-        inputManager.addMapping("CollisionsDebug", new KeyTrigger(KeyInput.KEY_T));
-
-        inputManager.addListener(this, "DebugMode");
-        inputManager.addListener(this, "CollisionsDebug");
-        inputManager.addListener(this, "FlyMode");
-        inputManager.addListener(this, "Left");
-        inputManager.addListener(this, "Right");
-        inputManager.addListener(this, "Up");
-        inputManager.addListener(this, "Down");
-        inputManager.addListener(this, "Jump");
-    }
-
-    public void onAction(String binding, boolean isPressed, float tpf) {
-        if (binding.equals("Up") && !isFlyCam) {
-            up = isPressed;
-            animChannel.setAnim("Run");
-            animChannel.setSpeed(1f);
-        }
-        if (binding.equals("Right") && !isFlyCam) {
-            right = isPressed;
-            animChannel.setAnim("Run");
-            animChannel.setSpeed(1f);
-        }
-        if (binding.equals("Left") && !isFlyCam) {
-            left = isPressed;
-            animChannel.setAnim("Run");
-            animChannel.setSpeed(1f);
-        }
-        if (binding.equals("Down") && !isFlyCam) {
-            down = isPressed;
-            animChannel.setAnim("Run");
-            animChannel.setSpeed(1f);
-        }
-        if (binding.equals("Jump") && !isFlyCam) {
-            if (isPressed) {
-                playerControl.jump();
-                animChannel.setAnim("JumpStart");
-                animChannel.setSpeed(0.5f);
-            }
-        }
-
-        if (binding.equals("CollisionsDebug")) {
-            if (isPressed) {
-                isCollisionDebug = !isCollisionDebug;
-                bulletAppState.setDebugEnabled(isCollisionDebug);
-            }
-        }
-        if (binding.equals("FlyMode")) {
-            if (isPressed) {
-               chaseCam.setEnabled(isFlyCam);
-               isFlyCam = !isFlyCam;
-               flyCam.setEnabled(isFlyCam);
-            }
-        }
-        else if (!isPressed) {
-            animChannel.setAnim("Idle");
-            animChannel.setSpeed(0.5f);
-        }
-    }
-
-    @Override
+  @Override
     public void simpleUpdate(float tpf) {
-        modelFowardDir = cam.getRotation().mult(Vector3f.UNIT_Z).multLocal(1, 0, 1);
+        modelFowardDir = cam.getRotation().mult(Vector3f.UNIT_Z).multLocal(1,0,1);
         modelLeftDir = cam.getRotation().mult(Vector3f.UNIT_X);
-        viewDirection = new Vector3f(0, 0, 0);
-        walkDirection = new Vector3f(0, 0, 0);
-
-        if (left && !isFlyCam) {
+        walkDirection = new Vector3f(0,0,0);
+       
+        if (left) {
             walkDirection.addLocal(modelLeftDir);
-            viewDirection.addLocal(modelLeftDir);
+            playerControl.getViewDirection().set(modelLeftDir.negate());
         }
-        if (right && !isFlyCam) {
+        if (right) {
             walkDirection.addLocal(modelLeftDir.negate());
-            viewDirection.addLocal(modelLeftDir.negate());
+            playerControl.getViewDirection().set(modelLeftDir);
         }
-        if (up && !isFlyCam) {
+        if (up) {
             walkDirection.addLocal(modelFowardDir);
-            viewDirection.addLocal(modelFowardDir);
+            playerControl.getViewDirection().set(modelFowardDir.negate());
         }
-        if (down && !isFlyCam) {
+        if (down) {
             walkDirection.addLocal(modelFowardDir.negate());
-            viewDirection.addLocal(modelFowardDir.negate());
+            playerControl.getViewDirection().set(modelFowardDir);
         }
         playerControl.setWalkDirection(walkDirection);
-        playerControl.setViewDirection(viewDirection);
-
-        playerX.setText("playerX = " + player.getLocalTranslation().x);
-        playerY.setText("playerY = " + player.getLocalTranslation().y);
-        playerZ.setText("playerZ = " + player.getLocalTranslation().z);
-
+        cam.setLocation(playerControl.getPhysicsLocation());
+        
     }
 
     @Override
     public void onAnimCycleDone(AnimControl control, AnimChannel channel, String animName) {
-        if (animName.equals("Run")) {
-            channel.setAnim("Run", 0.50f);
-            channel.setLoopMode(LoopMode.Loop);
-            channel.setSpeed(1.0f);
-        }
-        if (animName.equals("Idle")) {
-            channel.setAnim("Idle", 0.50f);
+        if (animName.equals("Walk")) {
+            channel.setAnim("Walk", 0.50f);
             channel.setLoopMode(LoopMode.Loop);
             channel.setSpeed(0.5f);
         }
-
-        if (animName.equals("JumpStart")) {
-            channel.setAnim("JumpEnd", 0.50f);
-            channel.setLoopMode(LoopMode.DontLoop);
+        if (animName.equals("Idle1")) {
+            channel.setAnim("Idle1", 0.50f);
+            channel.setLoopMode(LoopMode.Loop);
+            channel.setSpeed(0.5f);
+        }
+        
+        if (animName.equals("Jump")) {
+            channel.setAnim("Idle1", 0.50f);
+            channel.setLoopMode(LoopMode.Loop);
             channel.setSpeed(0.5f);
         }
     }
@@ -386,32 +276,4 @@ public class Game extends SimpleApplication
     @Override
     public void onAnalog(String name, float value, float tpf) {
     }
-
-    private BitmapText createDebugText(int x, int y, String text) {
-        guiFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
-        BitmapText bt = new BitmapText(guiFont, false);
-        bt.setSize(guiFont.getCharSet().getRenderedSize());
-        bt.setLocalTranslation(x, y, 0);
-        bt.setText(text);
-        guiNode.attachChild(bt);
-        return bt;
-    }
-
-    @Override
-    public void collision(PhysicsCollisionEvent event) {
-        if ("player".equals(event.getNodeA().getName()) || "player".equals(event.getNodeB().getName())) {
-            if ("banana".equals(event.getNodeA().getName()) || "banana".equals(event.getNodeB().getName())) {
-                if ("banana".equals(event.getNodeA().getName())) {
-                    event.getNodeA().removeFromParent();
-                    bulletAppState.getPhysicsSpace().remove(event.getNodeA());
-                } else {
-                    event.getNodeB().removeFromParent();
-                    bulletAppState.getPhysicsSpace().remove(event.getNodeB());
-                }
-
-                bananaCounter.setText("Bananas : " + bananasCaught++ + "/" + treeControl.getBananaCount());
-            }
-        }
-    }
-
 }
