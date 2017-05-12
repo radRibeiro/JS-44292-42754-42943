@@ -27,19 +27,19 @@ public class GenerateTerrain {
             "Textures/Terrain/splat/alphamap.png"));
 
     Texture grass = assetManager.loadTexture(
-            "Textures/Terrain/splat/grass.jpg");
+            "Textures/grass_texture.jpg");
     grass.setWrap(WrapMode.Repeat);
     mat_terrain.setTexture("Tex1", grass);
     mat_terrain.setFloat("Tex1Scale", 64f);
 
     Texture dirt = assetManager.loadTexture(
-            "Textures/Terrain/splat/dirt.jpg");
+            "Textures/better_dirt.jpg");
     dirt.setWrap(WrapMode.Repeat);
     mat_terrain.setTexture("Tex2", dirt);
     mat_terrain.setFloat("Tex2Scale", 32f);
 
     Texture rock = assetManager.loadTexture(
-            "Textures/Terrain/splat/road.jpg");
+            "Textures/grass_texture.jpg");
     rock.setWrap(WrapMode.Repeat);
     mat_terrain.setTexture("Tex3", rock);
     mat_terrain.setFloat("Tex3Scale", 128f);
@@ -49,14 +49,14 @@ public class GenerateTerrain {
     HillHeightMap.NORMALIZE_RANGE = 100;
     try {
         Random r = new Random();
-        heightmap = new HillHeightMap(513, 2000, 50, 100, (byte) r.nextInt(100));
+        heightmap = new HillHeightMap(1025, 2000, 50, 100, (byte) r.nextInt(100));
     } catch (Exception ex) {
         ex.printStackTrace();
     }
     heightmap.load();
     
     int patchSize = 65;
-    terrain = new TerrainQuad("terrain", patchSize, 513, heightmap.getHeightMap());
+    terrain = new TerrainQuad("terrain", patchSize, 1025, heightmap.getHeightMap());
     terrain.setShadowMode(ShadowMode.Receive);
     terrain.setMaterial(mat_terrain);
     terrain.setLocalScale(2f, 1f, 2f);

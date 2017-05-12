@@ -28,10 +28,14 @@ import com.jme3.input.controls.AnalogListener;
 import com.jme3.input.controls.KeyTrigger;
 import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
+import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.Matrix3f;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.post.FilterPostProcessor;
+import com.jme3.post.filters.BloomFilter;
+import com.jme3.post.filters.FXAAFilter;
 import com.jme3.renderer.queue.RenderQueue.ShadowMode;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
@@ -42,7 +46,9 @@ import com.jme3.shadow.PssmShadowRenderer;
 import com.jme3.system.AppSettings;
 import com.jme3.terrain.geomipmap.TerrainQuad;
 import com.jme3.util.SkyFactory;
+import com.jme3.water.WaterFilter;
 import java.util.Random;
+
 import util.*;
 
 public class Game extends SimpleApplication
@@ -51,8 +57,10 @@ public class Game extends SimpleApplication
     private Node targetNode;
     private Spatial sceneModel;
     private Spatial player;
-    private Spatial tree, banana;
-
+    
+    //Prefabs
+    private Spatial tree, banana, apple,rock;
+    private WaterFilter water;
     private CharacterControl playerControl;
     private BulletAppState bulletAppState;
     private RigidBodyControl landscape;
@@ -80,7 +88,7 @@ public class Game extends SimpleApplication
 
     private final static int WINDOW_WIDTH = 800;
     private final static int WINDOW_HEIGHT = 600;
-
+    private final static int INITIAL_WATER_HEIGHT = 4;
     private Vector3f[] points;
     private Geometry frustumMdl;
     private WireFrustum frustum;
@@ -93,9 +101,10 @@ public class Game extends SimpleApplication
     private BitmapText playerY;
     private BitmapText playerZ;
     private BitmapText bananaCounter;
+   
 
     private int bananasCaught = 0;
-
+    
     {
         points = new Vector3f[8];
         for (int i = 0; i < points.length; i++) {
@@ -118,6 +127,7 @@ public class Game extends SimpleApplication
         app.setSettings(settings);
     }
 
+    @Override
     public void simpleInitApp() {
         bulletAppState = new BulletAppState();
         stateManager.attach(bulletAppState);
@@ -127,6 +137,7 @@ public class Game extends SimpleApplication
         setupLight();
         setupShadows();
         setupTerrain();
+        setupWater();
         setupPlayer();
         setupAnimations();
         setupChaseCam();
@@ -134,7 +145,7 @@ public class Game extends SimpleApplication
         playerX = createDebugText(200, 100, "");
         playerY = createDebugText(400, 100, "");
         playerZ = createDebugText(600, 100, "");
-        bananaCounter = createDebugText(10, WINDOW_HEIGHT - 10, "Bananas : 0/" + treeControl.getBananaCount());
+        bananaCounter = createDebugText(10, WINDOW_HEIGHT - 10, "Pickups : 0/" + treeControl.getBananaCount());
 
         targetNode.attachChild(player);
         targetNode.attachChild(sceneModel);
@@ -204,31 +215,56 @@ public class Game extends SimpleApplication
         landscape = new RigidBodyControl(sceneShape, 0);
         sceneModel.addControl(landscape);
 
-        //trees
+        //trees prefab
         tree = assetManager.loadModel("Models/Tree/Tree.mesh.xml");
         tree.scale(6f, 10f, 6f);
         tree.setShadowMode(ShadowMode.CastAndReceive);
-
-        //bananas
+        // palmTree prefab
+      /* Spatial palmTree = assetManager.loadModel("Models/palmTree/Palma.j3o");
+        palmTree.scale(0.5f,0.5f,0.5f);
+        palmTree.setShadowMode(ShadowMode.CastAndReceive);*/
+        
+        //bananas 
         banana = assetManager.loadModel("Models/Banana/banana.j3o");
         banana.setShadowMode(ShadowMode.CastAndReceive);
 
+        //Apple prefab
+        apple = assetManager.loadModel("Models/Apple/apple.j3o");
+        apple.scale(3f,3f,3f);
+        
+        apple.setShadowMode(ShadowMode.CastAndReceive);
+        
+        //rock prefab
+        rock = assetManager.loadModel("Models/Rock/rock.j3o");
+        rock.setShadowMode(ShadowMode.CastAndReceive);
+        Material rockM = new Material(assetManager,"Common/MatDefs/Misc/Unshaded.j3md");
+        rockM.setTexture("ColorMap", assetManager.loadTexture("Models/Rock/rock_texture_2.jpg"));
+        rock.setMaterial(rockM);
         treeControl = new TreeControl(bulletAppState);
+        
+        treeControl.setAppleModel(apple);
         treeControl.setTreeModel(tree);
         treeControl.setBananaModel(banana);
+        treeControl.setRockModel(rock);
+       /* treeControl.setPalmTreeModel(palmTree);*/
+        
         rootNode.addControl(treeControl);
         rootNode.setShadowMode(ShadowMode.Off);
     }
 
     private void setupPlayer() {
+ 
         player = assetManager.loadModel("Models/Jaime/Jaime.j3o");
         player.setName("player");
-        player.scale(4f, 4f, 4f);
+        player.scale(8f, 8f, 8f);
         player.setShadowMode(ShadowMode.CastAndReceive);
+        
+        CapsuleCollisionShape capsuleShape = new CapsuleCollisionShape(2f, 0.01f);
+        
 
-        CapsuleCollisionShape capsuleShape = new CapsuleCollisionShape(5f, 0.1f);
+        
         playerControl = new CharacterControl(capsuleShape, 0.05f);
-        playerControl.setJumpSpeed(20);
+        playerControl.setJumpSpeed(35);
         playerControl.setFallSpeed(30);
         playerControl.setGravity(30);
 
@@ -268,7 +304,8 @@ public class Game extends SimpleApplication
         inputManager.addMapping("Jump", new KeyTrigger(KeyInput.KEY_SPACE));
         inputManager.addMapping("FlyMode", new KeyTrigger(KeyInput.KEY_Y));
         inputManager.addMapping("CollisionsDebug", new KeyTrigger(KeyInput.KEY_T));
-
+        inputManager.addMapping("Walk", new KeyTrigger(KeyInput.KEY_LSHIFT));
+        
         inputManager.addListener(this, "DebugMode");
         inputManager.addListener(this, "CollisionsDebug");
         inputManager.addListener(this, "FlyMode");
@@ -277,6 +314,7 @@ public class Game extends SimpleApplication
         inputManager.addListener(this, "Up");
         inputManager.addListener(this, "Down");
         inputManager.addListener(this, "Jump");
+        inputManager.addListener(this, "Walk");
     }
 
     public void onAction(String binding, boolean isPressed, float tpf) {
@@ -304,10 +342,17 @@ public class Game extends SimpleApplication
             if (isPressed) {
                 playerControl.jump();
                 animChannel.setAnim("JumpStart");
-                animChannel.setSpeed(0.5f);
+                animChannel.setSpeed(1f);
             }
         }
-
+        if(binding.equals("Walk") && !isFlyCam)
+        {
+                if(isPressed)
+                {
+                    animChannel.setAnim("Walk");
+                    animChannel.setSpeed(1f);
+                }
+        }
         if (binding.equals("CollisionsDebug")) {
             if (isPressed) {
                 isCollisionDebug = !isCollisionDebug;
@@ -371,7 +416,13 @@ public class Game extends SimpleApplication
             channel.setLoopMode(LoopMode.Loop);
             channel.setSpeed(0.5f);
         }
-
+        if(animName.equals("Walk"))
+        {
+            channel.setAnim("Walk", 0.50f);
+            channel.setLoopMode(LoopMode.Loop);
+            channel.setSpeed(0.5f);
+        }
+        
         if (animName.equals("JumpStart")) {
             channel.setAnim("JumpEnd", 0.50f);
             channel.setLoopMode(LoopMode.DontLoop);
@@ -399,19 +450,43 @@ public class Game extends SimpleApplication
 
     @Override
     public void collision(PhysicsCollisionEvent event) {
-        if ("player".equals(event.getNodeA().getName()) || "player".equals(event.getNodeB().getName())) {
-            if ("banana".equals(event.getNodeA().getName()) || "banana".equals(event.getNodeB().getName())) {
+        if ("player".equals(event.getNodeA().getName()) || "player".equals(event.getNodeB().getName())) 
+        {
+            if ("banana".equals(event.getNodeA().getName()) || "banana".equals(event.getNodeB().getName())) 
+            {
                 if ("banana".equals(event.getNodeA().getName())) {
-                    event.getNodeA().removeFromParent();
-                    bulletAppState.getPhysicsSpace().remove(event.getNodeA());
-                } else {
+                    if( event.getNodeA().removeFromParent()){
+                    bananaCounter.setText("Bananas : " + (bananasCaught++) + "/" + treeControl.getBananaCount());
+                    bulletAppState.getPhysicsSpace().remove(event.getNodeA());}
+                } else if(event.getNodeB().removeFromParent())
+                {
                     event.getNodeB().removeFromParent();
                     bulletAppState.getPhysicsSpace().remove(event.getNodeB());
+                    bananaCounter.setText("Bananas : " + (bananasCaught++) + "/" + treeControl.getBananaCount());
                 }
-
-                bananaCounter.setText("Bananas : " + bananasCaught++ + "/" + treeControl.getBananaCount());
+                
             }
         }
+    }
+
+    private void setupWater() {
+        water = new WaterFilter(rootNode,new Vector3f(2.8f, -2.8f, -2.8f).normalizeLocal());
+        water.setWaterColor(new ColorRGBA().setAsSrgb(0.0078f, 0.3176f, 0.5f, 1.0f));
+        water.setWaterTransparency(0.12f);
+        water.setReflectionDisplace(50);
+        water.setRefractionConstant(0.25f);
+        water.setColorExtinction(new Vector3f(30, 50, 70));
+        water.setCausticsIntensity(0.4f);  
+        water.setRefractionStrength(0.2f);
+        water.setWaterHeight(INITIAL_WATER_HEIGHT);
+        
+   
+        
+        FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
+        fpp.addFilter(water);
+       
+      
+      // viewPort.addProcessor(fpp);
     }
 
 }
