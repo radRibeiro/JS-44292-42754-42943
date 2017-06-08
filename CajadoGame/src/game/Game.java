@@ -98,7 +98,7 @@ public class Game extends SimpleApplication
 
     private final static int WINDOW_WIDTH = 1024;
     private final static int WINDOW_HEIGHT = 768;
-    private final static int INITIAL_WATER_HEIGHT = 4;
+    private final static int INITIAL_WATER_HEIGHT = 6;
     private Vector3f[] points;
     private Geometry frustumMdl;
     private WireFrustum frustum;
@@ -110,6 +110,7 @@ public class Game extends SimpleApplication
     private BitmapText playerX;
     private BitmapText playerY;
     private BitmapText playerZ;
+    private BitmapText endStatus;
     private BitmapText time;
     private BitmapText bananaCounter;
     private ParticleEmitter roundspark,waterspark;
@@ -134,7 +135,7 @@ public class Game extends SimpleApplication
         public void run() 
         {
             
-               for(currentTime = STARTING_TIME;currentTime>0;currentTime--){
+               for(currentTime = STARTING_TIME;currentTime>=0;currentTime--){
                     time.setText("Time left : "+currentTime);
                    try {
                        Thread.sleep(1000);
@@ -142,7 +143,9 @@ public class Game extends SimpleApplication
                        Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
                    }
                }
-               
+               if(bananasCaught<149){
+                   endStatus.setText("YOU LOST");
+               }
         }
     }
     public static void main(String[] args) {
@@ -181,6 +184,7 @@ public class Game extends SimpleApplication
         playerY = createDebugText(400, 100, "");
         playerZ = createDebugText(600, 100, "");
         currentTime = STARTING_TIME;
+        endStatus = createDebugText(WINDOW_WIDTH/2,WINDOW_HEIGHT/2,"");
         time = createDebugText(10, WINDOW_HEIGHT -40,"Time left : "+currentTime);
         bananaCounter = createDebugText(10, WINDOW_HEIGHT - 10, "Pickups : 0/" + treeControl.getBananaCount());
 
@@ -311,11 +315,14 @@ public class Game extends SimpleApplication
         player.addControl(playerControl);
         bulletAppState.getPhysicsSpace().add(playerControl);
     }
-
+    private void reSpawnPlayer(){
+        Vector3f pos = spawnPosition();
+        player.setLocalTranslation(pos);
+    }
     private Vector3f spawnPosition() {
         Random r = new Random();
-        int x = r.nextInt(512);
-        int z = r.nextInt(512);
+        int x = r.nextInt(1024);
+        int z = r.nextInt(1024);
         Vector2f xz = new Vector2f(x, z);
         int y = (int) terrain.getHeight(xz);
         return new Vector3f(x, y + 20, z);
@@ -343,7 +350,7 @@ public class Game extends SimpleApplication
         inputManager.addMapping("FlyMode", new KeyTrigger(KeyInput.KEY_Y));
         inputManager.addMapping("CollisionsDebug", new KeyTrigger(KeyInput.KEY_T));
         inputManager.addMapping("Walk", new KeyTrigger(KeyInput.KEY_LSHIFT));
-        
+        inputManager.addMapping("Resp", new KeyTrigger(KeyInput.KEY_R));
         inputManager.addListener(this, "DebugMode");
         inputManager.addListener(this, "CollisionsDebug");
         inputManager.addListener(this, "FlyMode");
@@ -353,6 +360,7 @@ public class Game extends SimpleApplication
         inputManager.addListener(this, "Down");
         inputManager.addListener(this, "Jump");
         inputManager.addListener(this, "Walk");
+         inputManager.addListener(this, "Resp");
     }
 
     public void onAction(String binding, boolean isPressed, float tpf) {
@@ -404,6 +412,11 @@ public class Game extends SimpleApplication
                flyCam.setEnabled(isFlyCam);
             }
         }
+        if(binding.equals("Resp")){
+          
+             reSpawnPlayer();
+            
+        }
         else if (!isPressed) {
             animChannel.setAnim("Idle");
             animChannel.setSpeed(1f);
@@ -436,10 +449,13 @@ public class Game extends SimpleApplication
         playerControl.setWalkDirection(walkDirection);
         playerControl.setViewDirection(viewDirection);
         Vector3f playerLoc = player.getLocalTranslation();
-        if(player.getLocalTranslation().y<= 6 && (down||left||right||up)){
+        if(player.getLocalTranslation().y<= INITIAL_WATER_HEIGHT && (down||left||right||up)){
             waterspark.setLocalTranslation(playerLoc);
             waterspark.emitAllParticles();
         }
+        if(bananasCaught>=149){
+                   endStatus.setText("YOU WON");
+               }
         playerX.setText("playerX = " + player.getLocalTranslation().x);
         playerY.setText("playerY = " + player.getLocalTranslation().y);
         playerZ.setText("playerZ = " + player.getLocalTranslation().z);
@@ -532,7 +548,7 @@ public class Game extends SimpleApplication
 
 
         //setting the water plane
-        Vector3f waterLocation=new Vector3f(-1024,6f,1024);
+        Vector3f waterLocation=new Vector3f(-1024,INITIAL_WATER_HEIGHT,1024);
         waterProcessor.setPlane(new Plane(Vector3f.UNIT_Y, waterLocation.dot(Vector3f.UNIT_Y)));
         waterProcessor.setWaterColor(ColorRGBA.Blue);
         //lower render size for higher performance
@@ -553,7 +569,7 @@ public class Game extends SimpleApplication
         water.setShadowMode(ShadowMode.Receive);
         water.setLocalRotation(new Quaternion().fromAngleAxis(-FastMath.HALF_PI, Vector3f.UNIT_X));
         water.setMaterial(waterProcessor.getMaterial());
-        water.setLocalTranslation(-1024, 6f, 1024);
+        water.setLocalTranslation(-1024, INITIAL_WATER_HEIGHT, 1024);
         viewPort.addProcessor(waterProcessor);
         rootNode.attachChild(water);
 
