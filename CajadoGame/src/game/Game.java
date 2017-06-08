@@ -56,6 +56,8 @@ import com.jme3.util.SkyFactory;
 import com.jme3.water.SimpleWaterProcessor;
 import com.jme3.water.WaterFilter;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import util.*;
 
@@ -108,14 +110,16 @@ public class Game extends SimpleApplication
     private BitmapText playerX;
     private BitmapText playerY;
     private BitmapText playerZ;
+    private BitmapText time;
     private BitmapText bananaCounter;
     private ParticleEmitter roundspark,waterspark;
     private static final boolean POINT_SPRITE = true;
     private static final ParticleMesh.Type EMITTER_TYPE = POINT_SPRITE ? ParticleMesh.Type.Point : ParticleMesh.Type.Triangle;
     private static final int COUNT_FACTOR = 1;
     private static final float COUNT_FACTOR_F = 1f;
-   
+    private static final int STARTING_TIME = 45;
     private int bananasCaught = 0;
+    private int currentTime;
     
     {
         points = new Vector3f[8];
@@ -124,6 +128,23 @@ public class Game extends SimpleApplication
         }
     }
 
+    private class Timer implements Runnable{
+
+        @Override
+        public void run() 
+        {
+            
+               for(currentTime = STARTING_TIME;currentTime>0;currentTime--){
+                    time.setText("Time left : "+currentTime);
+                   try {
+                       Thread.sleep(1000);
+                   } catch (InterruptedException ex) {
+                       Logger.getLogger(Game.class.getName()).log(Level.SEVERE, null, ex);
+                   }
+               }
+               
+        }
+    }
     public static void main(String[] args) {
         Game app = new Game();
         setupAppSettings(app);
@@ -159,6 +180,8 @@ public class Game extends SimpleApplication
         playerX = createDebugText(200, 100, "");
         playerY = createDebugText(400, 100, "");
         playerZ = createDebugText(600, 100, "");
+        currentTime = STARTING_TIME;
+        time = createDebugText(10, WINDOW_HEIGHT -40,"Time left : "+currentTime);
         bananaCounter = createDebugText(10, WINDOW_HEIGHT - 10, "Pickups : 0/" + treeControl.getBananaCount());
 
         targetNode.attachChild(player);
@@ -167,7 +190,8 @@ public class Game extends SimpleApplication
         bulletAppState.getPhysicsSpace().add(landscape);
         bulletAppState.getPhysicsSpace().add(player);
         bulletAppState.getPhysicsSpace().addCollisionListener(this);
-
+       // (new Thread(new ServerHandler())).start();
+        (new Thread(new Timer())).start();
     }
 
     private void setupShadows() {
@@ -479,6 +503,8 @@ public class Game extends SimpleApplication
                         roundspark.emitAllParticles();
                         bananaCounter.setText("Bananas : " + (bananasCaught++) + "/" + treeControl.getBananaCount());
                         bulletAppState.getPhysicsSpace().remove(event.getNodeA());
+                        currentTime+=5;
+                        time.setText("Time left : "+currentTime);
                     }
                 } 
                 else if(event.getNodeB().removeFromParent())
@@ -490,6 +516,8 @@ public class Game extends SimpleApplication
                     event.getNodeB().removeFromParent();
                     bulletAppState.getPhysicsSpace().remove(event.getNodeB());
                     bananaCounter.setText("Bananas : " + (bananasCaught++) + "/" + treeControl.getBananaCount());
+                        currentTime+=5;
+                    time.setText("Time left : "+currentTime);
                 }
                 
             }
@@ -504,7 +532,7 @@ public class Game extends SimpleApplication
 
 
         //setting the water plane
-        Vector3f waterLocation=new Vector3f(-1024,6,1024);
+        Vector3f waterLocation=new Vector3f(-1024,6f,1024);
         waterProcessor.setPlane(new Plane(Vector3f.UNIT_Y, waterLocation.dot(Vector3f.UNIT_Y)));
         waterProcessor.setWaterColor(ColorRGBA.Blue);
         //lower render size for higher performance
@@ -525,7 +553,7 @@ public class Game extends SimpleApplication
         water.setShadowMode(ShadowMode.Receive);
         water.setLocalRotation(new Quaternion().fromAngleAxis(-FastMath.HALF_PI, Vector3f.UNIT_X));
         water.setMaterial(waterProcessor.getMaterial());
-        water.setLocalTranslation(-1024, 6, 1024);
+        water.setLocalTranslation(-1024, 6f, 1024);
         viewPort.addProcessor(waterProcessor);
         rootNode.attachChild(water);
 
