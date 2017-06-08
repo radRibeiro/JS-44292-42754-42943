@@ -567,7 +567,7 @@ public class Game extends SimpleApplication
         waterspark.setParticlesPerSec(0);
         waterspark.setGravity(0, -.5f, 0);
         waterspark.setLowLife(0.5f);
-        waterspark.setHighLife(8f);
+        waterspark.setHighLife(1f);
         waterspark.setInitialVelocity(new Vector3f(0, 6, 0));
         waterspark.setVelocityVariation(.5f);
         waterspark.setImagesX(1);
