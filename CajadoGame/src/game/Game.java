@@ -20,6 +20,9 @@ import com.jme3.bullet.collision.shapes.CollisionShape;
 import com.jme3.bullet.control.CharacterControl;
 import com.jme3.bullet.control.RigidBodyControl;
 import com.jme3.bullet.util.CollisionShapeFactory;
+import com.jme3.effect.ParticleEmitter;
+import com.jme3.effect.ParticleMesh;
+import com.jme3.effect.shapes.EmitterSphereShape;
 import com.jme3.font.BitmapText;
 import com.jme3.input.ChaseCamera;
 import com.jme3.input.KeyInput;
@@ -30,7 +33,10 @@ import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.FastMath;
 import com.jme3.math.Matrix3f;
+import com.jme3.math.Plane;
+import com.jme3.math.Quaternion;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.post.FilterPostProcessor;
@@ -41,11 +47,13 @@ import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.debug.WireFrustum;
+import com.jme3.scene.shape.Quad;
 import com.jme3.shadow.PssmShadowFilter;
 import com.jme3.shadow.PssmShadowRenderer;
 import com.jme3.system.AppSettings;
 import com.jme3.terrain.geomipmap.TerrainQuad;
 import com.jme3.util.SkyFactory;
+import com.jme3.water.SimpleWaterProcessor;
 import com.jme3.water.WaterFilter;
 import java.util.Random;
 
@@ -86,8 +94,8 @@ public class Game extends SimpleApplication
     private PssmShadowRenderer bsr;
     private PssmShadowFilter psf;
 
-    private final static int WINDOW_WIDTH = 800;
-    private final static int WINDOW_HEIGHT = 600;
+    private final static int WINDOW_WIDTH = 1024;
+    private final static int WINDOW_HEIGHT = 768;
     private final static int INITIAL_WATER_HEIGHT = 4;
     private Vector3f[] points;
     private Geometry frustumMdl;
@@ -101,8 +109,12 @@ public class Game extends SimpleApplication
     private BitmapText playerY;
     private BitmapText playerZ;
     private BitmapText bananaCounter;
+    private ParticleEmitter roundspark,waterspark;
+    private static final boolean POINT_SPRITE = true;
+    private static final ParticleMesh.Type EMITTER_TYPE = POINT_SPRITE ? ParticleMesh.Type.Point : ParticleMesh.Type.Triangle;
+    private static final int COUNT_FACTOR = 1;
+    private static final float COUNT_FACTOR_F = 1f;
    
-
     private int bananasCaught = 0;
     
     {
@@ -141,6 +153,8 @@ public class Game extends SimpleApplication
         setupPlayer();
         setupAnimations();
         setupChaseCam();
+        createRoundSpark();
+        createWaterSpark();
         
         playerX = createDebugText(200, 100, "");
         playerY = createDebugText(400, 100, "");
@@ -264,9 +278,9 @@ public class Game extends SimpleApplication
 
         
         playerControl = new CharacterControl(capsuleShape, 0.05f);
-        playerControl.setJumpSpeed(35);
-        playerControl.setFallSpeed(30);
-        playerControl.setGravity(30);
+        playerControl.setJumpSpeed(30);
+        playerControl.setFallSpeed(70);
+        playerControl.setGravity(75);
 
         Vector3f pos = spawnPosition();
         player.setLocalTranslation(pos);
@@ -321,22 +335,22 @@ public class Game extends SimpleApplication
         if (binding.equals("Up") && !isFlyCam) {
             up = isPressed;
             animChannel.setAnim("Run");
-            animChannel.setSpeed(1f);
+            animChannel.setSpeed(1.5f);
         }
         if (binding.equals("Right") && !isFlyCam) {
             right = isPressed;
             animChannel.setAnim("Run");
-            animChannel.setSpeed(1f);
+            animChannel.setSpeed(1.5f);
         }
         if (binding.equals("Left") && !isFlyCam) {
             left = isPressed;
             animChannel.setAnim("Run");
-            animChannel.setSpeed(1f);
+            animChannel.setSpeed(1.5f);
         }
         if (binding.equals("Down") && !isFlyCam) {
             down = isPressed;
             animChannel.setAnim("Run");
-            animChannel.setSpeed(1f);
+            animChannel.setSpeed(1.5f);
         }
         if (binding.equals("Jump") && !isFlyCam) {
             if (isPressed) {
@@ -368,7 +382,7 @@ public class Game extends SimpleApplication
         }
         else if (!isPressed) {
             animChannel.setAnim("Idle");
-            animChannel.setSpeed(0.5f);
+            animChannel.setSpeed(1f);
         }
     }
 
@@ -397,7 +411,11 @@ public class Game extends SimpleApplication
         }
         playerControl.setWalkDirection(walkDirection);
         playerControl.setViewDirection(viewDirection);
-
+        Vector3f playerLoc = player.getLocalTranslation();
+        if(player.getLocalTranslation().y<= 6){
+            waterspark.setLocalTranslation(playerLoc);
+            waterspark.emitAllParticles();
+        }
         playerX.setText("playerX = " + player.getLocalTranslation().x);
         playerY.setText("playerY = " + player.getLocalTranslation().y);
         playerZ.setText("playerZ = " + player.getLocalTranslation().z);
@@ -407,26 +425,26 @@ public class Game extends SimpleApplication
     @Override
     public void onAnimCycleDone(AnimControl control, AnimChannel channel, String animName) {
         if (animName.equals("Run")) {
-            channel.setAnim("Run", 0.50f);
+            channel.setAnim("Run", 1.5f);
             channel.setLoopMode(LoopMode.Loop);
-            channel.setSpeed(1.0f);
+            channel.setSpeed(1.5f);
         }
         if (animName.equals("Idle")) {
-            channel.setAnim("Idle", 0.50f);
+            channel.setAnim("Idle", 1f);
             channel.setLoopMode(LoopMode.Loop);
-            channel.setSpeed(0.5f);
+            channel.setSpeed(1f);
         }
         if(animName.equals("Walk"))
         {
-            channel.setAnim("Walk", 0.50f);
+            channel.setAnim("Walk", 1.5f);
             channel.setLoopMode(LoopMode.Loop);
-            channel.setSpeed(0.5f);
+            channel.setSpeed(1.5f);
         }
         
         if (animName.equals("JumpStart")) {
-            channel.setAnim("JumpEnd", 0.50f);
+            channel.setAnim("JumpEnd", 1f);
             channel.setLoopMode(LoopMode.DontLoop);
-            channel.setSpeed(0.5f);
+            channel.setSpeed(1f);
         }
     }
 
@@ -456,10 +474,19 @@ public class Game extends SimpleApplication
             {
                 if ("banana".equals(event.getNodeA().getName())) {
                     if( event.getNodeA().removeFromParent()){
-                    bananaCounter.setText("Bananas : " + (bananasCaught++) + "/" + treeControl.getBananaCount());
-                    bulletAppState.getPhysicsSpace().remove(event.getNodeA());}
-                } else if(event.getNodeB().removeFromParent())
+                        Vector3f bananaLoc = event.getNodeA().getLocalTranslation();
+                        roundspark.setLocalTranslation(bananaLoc.x , bananaLoc.y, bananaLoc.z);
+                        roundspark.emitAllParticles();
+                        bananaCounter.setText("Bananas : " + (bananasCaught++) + "/" + treeControl.getBananaCount());
+                        bulletAppState.getPhysicsSpace().remove(event.getNodeA());
+                    }
+                } 
+                else if(event.getNodeB().removeFromParent())
                 {
+                    Vector3f bananaLoc = event.getNodeB().getLocalTranslation();
+                    System.out.printf("x: %f y: %f z: %f",bananaLoc.x,bananaLoc.y,bananaLoc.z);
+                    roundspark.setLocalTranslation(bananaLoc.x , bananaLoc.y, bananaLoc.z);
+                    roundspark.emitAllParticles();
                     event.getNodeB().removeFromParent();
                     bulletAppState.getPhysicsSpace().remove(event.getNodeB());
                     bananaCounter.setText("Bananas : " + (bananasCaught++) + "/" + treeControl.getBananaCount());
@@ -470,23 +497,86 @@ public class Game extends SimpleApplication
     }
 
     private void setupWater() {
-        water = new WaterFilter(rootNode,new Vector3f(2.8f, -2.8f, -2.8f).normalizeLocal());
-        water.setWaterColor(new ColorRGBA().setAsSrgb(0.0078f, 0.3176f, 0.5f, 1.0f));
-        water.setWaterTransparency(0.12f);
-        water.setReflectionDisplace(50);
-        water.setRefractionConstant(0.25f);
-        water.setColorExtinction(new Vector3f(30, 50, 70));
-        water.setCausticsIntensity(0.4f);  
-        water.setRefractionStrength(0.2f);
-        water.setWaterHeight(INITIAL_WATER_HEIGHT);
-        
-   
-        
-        FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
-        fpp.addFilter(water);
+          SimpleWaterProcessor waterProcessor = new SimpleWaterProcessor(assetManager);
+        waterProcessor.setReflectionScene(rootNode);
+        waterProcessor.setLightPosition(new Vector3f(2.8f, -2.8f, -2.8f).normalizeLocal());
+        waterProcessor.setRefractionClippingOffset(1.0f);
+
+
+        //setting the water plane
+        Vector3f waterLocation=new Vector3f(-1024,6,1024);
+        waterProcessor.setPlane(new Plane(Vector3f.UNIT_Y, waterLocation.dot(Vector3f.UNIT_Y)));
+        waterProcessor.setWaterColor(ColorRGBA.Blue);
+        //lower render size for higher performance
+//        waterProcessor.setRenderSize(128,128);
+        //raise depth to see through water
+//        waterProcessor.setWaterDepth(20);
+        //lower the distortion scale if the waves appear too strong
+//        waterProcessor.setDistortionScale(0.1f);
+        //lower the speed of the waves if they are too fast
+//        waterProcessor.setWaveSpeed(0.01f);
+
+        Quad quad = new Quad(2048,2048);
+
+        //the texture coordinates define the general size of the waves
+        quad.scaleTextureCoordinates(new Vector2f(6f,6f));
+
+        Geometry water=new Geometry("water", quad);
+        water.setShadowMode(ShadowMode.Receive);
+        water.setLocalRotation(new Quaternion().fromAngleAxis(-FastMath.HALF_PI, Vector3f.UNIT_X));
+        water.setMaterial(waterProcessor.getMaterial());
+        water.setLocalTranslation(-1024, 6, 1024);
+        viewPort.addProcessor(waterProcessor);
+        rootNode.attachChild(water);
+
        
+
+     
+
+    }
+    
+      private void createRoundSpark(){
+        roundspark = new ParticleEmitter("RoundSpark", EMITTER_TYPE, 20 * COUNT_FACTOR);
+        roundspark.setStartColor(new ColorRGBA(1f, 1f, 0f, (float) (1.0 / COUNT_FACTOR_F)));
+        roundspark.setEndColor(new ColorRGBA(1, 1, 1, (float) (0.5f / COUNT_FACTOR_F)));
+        roundspark.setStartSize(1.2f);
+        roundspark.setEndSize(2.5f);
+        roundspark.setShape(new EmitterSphereShape(Vector3f.ZERO, 2f));
+        roundspark.setParticlesPerSec(0);
+        roundspark.setGravity(0, -.5f, 0);
+        roundspark.setLowLife(1.8f);
+        roundspark.setHighLife(2f);
+        roundspark.setInitialVelocity(new Vector3f(0, 1, 0));
+        roundspark.setVelocityVariation(.5f);
+        roundspark.setImagesX(1);
+        roundspark.setImagesY(1);
+        Material mat = new Material(assetManager, "Common/MatDefs/Misc/Particle.j3md");
+        mat.setTexture("Texture", assetManager.loadTexture("Effects/Explosion/roundspark.png"));
+        mat.setBoolean("PointSprite", POINT_SPRITE);
+        roundspark.setMaterial(mat);
+        rootNode.attachChild(roundspark);
+    }
       
-      // viewPort.addProcessor(fpp);
+         private void createWaterSpark(){
+        waterspark = new ParticleEmitter("RoundSpark", EMITTER_TYPE, 120 * COUNT_FACTOR);
+        waterspark.setStartColor(new ColorRGBA(210, 230f, 239f, (float) (1.0 / COUNT_FACTOR_F)));
+        waterspark.setEndColor(new ColorRGBA(1, 1, 1, (float) (0.5f / COUNT_FACTOR_F)));
+        waterspark.setStartSize(4f);
+        waterspark.setEndSize(5f);
+        waterspark.setShape(new EmitterSphereShape(Vector3f.ZERO, 6f));
+        waterspark.setParticlesPerSec(0);
+        waterspark.setGravity(0, -.5f, 0);
+        waterspark.setLowLife(0.5f);
+        waterspark.setHighLife(8f);
+        waterspark.setInitialVelocity(new Vector3f(0, 6, 0));
+        waterspark.setVelocityVariation(.5f);
+        waterspark.setImagesX(1);
+        waterspark.setImagesY(1);
+        Material mat = new Material(assetManager, "Common/MatDefs/Misc/Particle.j3md");
+        mat.setTexture("Texture", assetManager.loadTexture("Effects/Explosion/roundspark.png"));
+        mat.setBoolean("PointSprite", POINT_SPRITE);
+        waterspark.setMaterial(mat);
+        rootNode.attachChild(waterspark);
     }
 
 }
