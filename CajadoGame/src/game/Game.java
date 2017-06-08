@@ -412,7 +412,7 @@ public class Game extends SimpleApplication
         playerControl.setWalkDirection(walkDirection);
         playerControl.setViewDirection(viewDirection);
         Vector3f playerLoc = player.getLocalTranslation();
-        if(player.getLocalTranslation().y<= 6){
+        if(player.getLocalTranslation().y<= 6 && (down||left||right||up)){
             waterspark.setLocalTranslation(playerLoc);
             waterspark.emitAllParticles();
         }
@@ -536,12 +536,12 @@ public class Game extends SimpleApplication
     }
     
       private void createRoundSpark(){
-        roundspark = new ParticleEmitter("RoundSpark", EMITTER_TYPE, 20 * COUNT_FACTOR);
+        roundspark = new ParticleEmitter("RoundSpark", EMITTER_TYPE, 120 * COUNT_FACTOR);
         roundspark.setStartColor(new ColorRGBA(1f, 1f, 0f, (float) (1.0 / COUNT_FACTOR_F)));
         roundspark.setEndColor(new ColorRGBA(1, 1, 1, (float) (0.5f / COUNT_FACTOR_F)));
         roundspark.setStartSize(1.2f);
         roundspark.setEndSize(2.5f);
-        roundspark.setShape(new EmitterSphereShape(Vector3f.ZERO, 2f));
+        roundspark.setShape(new EmitterSphereShape(Vector3f.ZERO, 4f));
         roundspark.setParticlesPerSec(0);
         roundspark.setGravity(0, -.5f, 0);
         roundspark.setLowLife(1.8f);
